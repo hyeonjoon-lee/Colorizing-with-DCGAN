@@ -1,3 +1,4 @@
+import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from dataloader import *
@@ -84,15 +85,38 @@ class Generator(nn.Module):
         x = self.final(d4)
         return x
 
+def initialize_weights(model):
+    for m in model.modules():
+        if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+            nn.init.normal_(m.weight.data, 0.0, 0.02)
+        elif isinstance(m, nn.BatchNorm2d):
+            nn.init.normal_(m.weight.data, 1.0, 0.02)
+            nn.init.constant_(m.bias.data, 0.0)
+
+def test():
+    N, in_channels, H, W = 32, 3, 32, 32
+    z_dim = 100
+    x = torch.randn((N, in_channels, H, W))
+    disc = Discriminator(in_channels, 8)
+    initialize_weights(disc)
+    assert disc(x).shape == (32, 1)
+    gen = Generator(z_dim, in_channels)
+    z = torch.randn((N, z_dim, 1, 1))
+    assert gen(z).shape == (32, 2, 32, 32)
+    print("Success")
+
 if __name__ == '__main__':
+    test()
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     generator = Generator(channel_l=1, features_dim=64).to(device)
+
     # run through the dataset and display the first image of every batch
     for idx, sample in enumerate(test_loader):
 
         img_l, real_img_lab = sample[:, 0:1, :, :].to(device), sample.to(device)
 
-        # generate images with bn model
+        # generate images with generator model
         fake_img_ab_bn = generator(img_l).detach()
         fake_img_lab_bn = torch.cat([img_l, fake_img_ab_bn], dim=1)
 
