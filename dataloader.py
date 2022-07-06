@@ -1,4 +1,5 @@
 import torch
+from torch.utils.data import DataLoader
 import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
@@ -6,7 +7,7 @@ import numpy as np
 import cv2
 
 
-def imshow(img):
+def toRGB(img):
     # transpose back
     img = np.transpose(img.numpy(), (1, 2, 0))
     # transform back
@@ -17,8 +18,7 @@ def imshow(img):
     img_rgb = cv2.cvtColor(img, cv2.COLOR_LAB2RGB)
     # to int8
     img_rgb = (img_rgb * 255.0).astype(np.uint8)
-    plt.imshow(img_rgb)
-    plt.show()
+    return img_rgb
 
 
 def toLAB(dataset):
@@ -51,9 +51,11 @@ class LABDataset(torch.utils.data.Dataset):
         return img
 
 
-train_loader = torch.utils.data.DataLoader(LABDataset(train=True), batch_size=32, shuffle=True)
-test_loader = torch.utils.data.DataLoader(LABDataset(train=False), batch_size=32, shuffle=False)
+train_loader = DataLoader(LABDataset(train=True), batch_size=32, shuffle=True)
+test_loader = DataLoader(LABDataset(train=False), batch_size=32, shuffle=False)
 
 if __name__ == '__main__':
     loader = iter(test_loader)
     print(loader.next().shape)
+    plt.imshow(toRGB(loader.next()[4]))
+    plt.show()
