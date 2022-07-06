@@ -101,6 +101,7 @@ def test():
     initialize_weights(disc)
     assert disc(x).shape == (32, 1)
     gen = Generator(z_dim, in_channels)
+    initialize_weights(gen)
     z = torch.randn((N, z_dim, 1, 1))
     assert gen(z).shape == (32, 2, 32, 32)
     print("Success")
@@ -117,10 +118,14 @@ if __name__ == '__main__':
         img_l, real_img_lab = sample[:, 0:1, :, :].to(device), sample.to(device)
 
         # generate images with generator model
-        fake_img_ab_bn = generator(img_l).detach()
-        fake_img_lab_bn = torch.cat([img_l, fake_img_ab_bn], dim=1)
+        fake_img_ab = generator(img_l).detach()
+        fake_img_lab = torch.cat([img_l, fake_img_ab], dim=1)
 
         print('sample {}/{}'.format(idx + 1, len(test_loader) + 1))
-        fake_img_lab_bn = fake_img_lab_bn.cpu()
-        print(fake_img_lab_bn.shape)
-        imshow(fake_img_lab_bn[0])
+        fake_img_lab = fake_img_lab.cpu()
+        print(fake_img_lab.shape)
+        print(fake_img_lab[0].shape)
+        print(toRGB(fake_img_lab[0]).shape)
+        plt.imshow(toRGB(fake_img_lab[1]))
+        plt.show()
+
