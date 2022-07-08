@@ -1,23 +1,22 @@
 import os.path
-
+import sys
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from networks import Generator, Discriminator, initialize_weights
 from dataloader import *
 
 # Hyperparameters
-LR_GEN = 3e-4       # Initial learning rate for the generator (different from the paper)
-LR_DISC = 6e-5      # Initial learning rate for the discriminator (different from the paper)
-BATCH_SIZE = 32     # Batch size is also different from the paper
-EPOCH = 100
-FEATURES_GEN = 64
-FEATURES_DISC = 64
+LR_GEN = 3e-4  # Initial learning rate for the generator (different from the paper)
+LR_DISC = 6e-5  # Initial learning rate for the discriminator (different from the paper)
+BATCH_SIZE = 32  # Batch size is also different from the paper
+EPOCH = 200
+FEATURES = 64
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Setting up models
-generator = Generator(channel_l=1, features_dim=FEATURES_GEN).to(device)
-discriminator = Discriminator(channels_lab=3, features_dim=FEATURES_DISC).to(device)
+generator = Generator(channel_l=1, features_dim=FEATURES).to(device)
+discriminator = Discriminator(channels_lab=3, features_dim=FEATURES).to(device)
 
 # Initializing weights
 initialize_weights(generator)
@@ -56,8 +55,8 @@ for epoch in range(EPOCH):
         fake_img_lab = torch.cat([img_l, fake_img_ab], dim=1).to(device)
 
         # Targets for calculating loss
-        target_ones = torch.ones(img_lab.size(0), 1).to(device)     # N x 1
-        target_zeros = torch.zeros(img_lab.size(0), 1).to(device)   # N x 1
+        target_ones = torch.ones(img_lab.size(0), 1).to(device)  # N x 1
+        target_zeros = torch.zeros(img_lab.size(0), 1).to(device)  # N x 1
 
         ### Train Discriminator -> max (log(D(y|x)) + log(1 - D(G(0_z|x)|x)))
         discriminator.zero_grad()
@@ -77,7 +76,7 @@ for epoch in range(EPOCH):
         loss_adversarial = disc_loss(discriminator(fake_img_lab), target_ones)
         loss_l1 = l1_loss(img_lab[:, 1:, :, :], fake_img_ab)
 
-        gen_total_loss = loss_adversarial + 100 * loss_l1
+        gen_total_loss = 0.01 * loss_adversarial + loss_l1
         gen_total_loss.backward()
         opt_gen.step()
 
@@ -118,4 +117,3 @@ for epoch in range(EPOCH):
 
     gen_scheduler.step()
     disc_scheduler.step()
-
