@@ -1,6 +1,6 @@
 import torch.nn.functional as F
 import torch.nn as nn
-from dataloader import *
+from dataloader_global_features import *
 
 
 class ConvLayer(nn.Module):
@@ -15,7 +15,8 @@ class ConvLayer(nn.Module):
         self.activation = activation_fn
 
     def forward(self, x):
-        x = self.activation(self.norm(self.conv(x))) if self.norm is not None else self.activation(self.conv(x))
+        x = self.norm(self.conv(x)) if self.norm is not None else self.conv(x)
+        x = self.activation(x) if self.activation is not None else x
         return x
 
 
@@ -106,7 +107,7 @@ class Generator(nn.Module):
             self.classifier = nn.Sequential(
                 ConvLayer(features_dim * 8, features_dim * 4, kernel=1, stride=1, padding=0),
                 ConvLayer(features_dim * 4, features_dim * 2, kernel=1, stride=1, padding=0),
-                ConvLayer(features_dim * 2, 10, kernel=1, stride=1, padding=0, activation_fn=nn.Tanh()),
+                nn.Conv2d(features_dim * 2, 10, kernel_size=1, padding=0)
             )
 
         # colorization level
@@ -171,11 +172,6 @@ if __name__ == '__main__':
 
     initialize_weights(generator)
     initialize_weights(discriminator)
-
-    print("\nGenerator:")
-    print(list(generator.children()))
-    print("\nDiscriminator:")
-    print(list(discriminator.children()))
 
     # run through the dataset and display the first image of every batch
     for idx, sample in enumerate(test_loader):
