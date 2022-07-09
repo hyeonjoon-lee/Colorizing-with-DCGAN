@@ -1,9 +1,9 @@
 import os
-from networks import Generator, initialize_weights
+from networks import Generator
 from dataloader import *
 import matplotlib.pyplot as plt
 
-NORMALIZATION = 'instance'
+NORMALIZATION = 'group'
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

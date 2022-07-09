@@ -55,7 +55,8 @@ train_loader = DataLoader(LABDataset(train=True), batch_size=32, shuffle=True)
 test_loader = DataLoader(LABDataset(train=False), batch_size=32, shuffle=False)
 
 if __name__ == '__main__':
-    loader = iter(test_loader)
-    print(loader.next().shape)
-    plt.imshow(toRGB(loader.next()[4]))
-    plt.show()
+    print(len(test_loader))
+    for idx, sample in enumerate(test_loader):
+        for i in range(len(sample)):
+            plt.imshow(toRGB(sample[i]))
+            plt.show()

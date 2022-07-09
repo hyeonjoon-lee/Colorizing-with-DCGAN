@@ -145,11 +145,6 @@ if __name__ == '__main__':
     initialize_weights(generator)
     initialize_weights(discriminator)
 
-    print("\nGenerator:")
-    print(list(generator.children()))
-    print("\nDiscriminator:")
-    print(list(discriminator.children()))
-
     # run through the dataset and display the first image of every batch
     for idx, sample in enumerate(test_loader):
         img_l, real_img_lab = sample[:, 0:1, :, :].to(device), sample.to(device)
