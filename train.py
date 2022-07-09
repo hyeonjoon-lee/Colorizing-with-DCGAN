@@ -1,4 +1,5 @@
 import os.path
+import sys
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from networks import Generator, Discriminator, initialize_weights
@@ -10,7 +11,7 @@ LR_DISC = 6e-5  # Initial learning rate for the discriminator (different from th
 BATCH_SIZE = 32  # Batch size is also different from the paper
 EPOCH = 200
 FEATURES = 64
-NORMALIZATION = "instance"
+NORMALIZATION = "batch"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Setting up models
@@ -45,7 +46,7 @@ checkpoint_path = os.path.join('./checkpoints', NORMALIZATION)
 if not os.path.exists(checkpoint_path):
     os.makedirs(checkpoint_path)
 
-for epoch in range(EPOCH):
+for epoch in range(1, EPOCH+1):
 
     for batch_idx, sample in enumerate(train_loader):
 
@@ -94,8 +95,8 @@ for epoch in range(EPOCH):
                 writer_real.add_image("Real", toRGB(img_grid_real.cpu()), global_step=step, dataformats='HWC')
                 writer_fake.add_image("Fake", toRGB(img_grid_fake.cpu()), global_step=step, dataformats='HWC')
 
-                writer.add_scalar('Generator Total Loss', gen_total_loss, epoch * len(train_loader) + batch_idx)
-                writer.add_scalar('Discriminator Total Loss', disc_total_loss, epoch * len(train_loader) + batch_idx)
+                writer.add_scalar('Generator Total Loss', gen_total_loss, (epoch - 1) * len(train_loader) + batch_idx)
+                writer.add_scalar('Discriminator Total Loss', disc_total_loss, (epoch - 1) * len(train_loader) + batch_idx)
             step += 1
 
     if epoch % 10 == 0:
@@ -114,6 +115,7 @@ for epoch in range(EPOCH):
 
         torch.save(generator_checkpoint, generator_path)
         torch.save(discriminator_checkpoint, discriminator_path)
+
         print("Model Saved at Epoch {}".format(epoch))
 
     gen_scheduler.step()
