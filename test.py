@@ -2,9 +2,12 @@ import os
 from networks import Generator
 from dataloader import *
 import matplotlib.pyplot as plt
+
+NORMALIZATION = 'batch'
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-loaded_path = os.path.join('./checkpoints', 'generator_checkpoint_epoch60.pth')
+loaded_path = os.path.join('./checkpoints', NORMALIZATION, 'generator_checkpoint_epoch199.pth')
 loaded_checkpoint = torch.load(loaded_path)
 
 generator = Generator(channel_l=1, features_dim=64).to(device)

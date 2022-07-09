@@ -1,5 +1,4 @@
 import os.path
-import sys
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from networks import Generator, Discriminator, initialize_weights
@@ -11,12 +10,12 @@ LR_DISC = 6e-5  # Initial learning rate for the discriminator (different from th
 BATCH_SIZE = 32  # Batch size is also different from the paper
 EPOCH = 200
 FEATURES = 64
-
+NORMALIZATION = "instance"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Setting up models
-generator = Generator(channel_l=1, features_dim=FEATURES).to(device)
-discriminator = Discriminator(channels_lab=3, features_dim=FEATURES).to(device)
+generator = Generator(channel_l=1, features_dim=FEATURES, normalization=NORMALIZATION).to(device)
+discriminator = Discriminator(channels_lab=3, features_dim=FEATURES, normalization=NORMALIZATION).to(device)
 
 # Initializing weights
 initialize_weights(generator)
@@ -33,16 +32,18 @@ l1_loss = torch.nn.L1Loss(reduction='mean')
 disc_loss = torch.nn.BCELoss(reduction='mean')
 
 # Tensorboard
-writer_real = SummaryWriter(f"logs/real")
-writer_fake = SummaryWriter(f"logs/fake")
-writer = SummaryWriter(f"logs/Baseline")
+writer_real = SummaryWriter("logs/{}/real".format(NORMALIZATION))
+writer_fake = SummaryWriter("logs/{}/fake".format(NORMALIZATION))
+writer = SummaryWriter("logs/{}/Losses".format(NORMALIZATION))
 step = 0
 
 generator.train()
 discriminator.train()
 
-if not os.path.exists('./checkpoints'):
-    os.makedirs('./checkpoints')
+checkpoint_path = os.path.join('./checkpoints', NORMALIZATION)
+
+if not os.path.exists(checkpoint_path):
+    os.makedirs(checkpoint_path)
 
 for epoch in range(EPOCH):
 
@@ -108,8 +109,8 @@ for epoch in range(EPOCH):
             "model_state": discriminator.state_dict(),
             "optim_state": opt_disc.state_dict()
         }
-        generator_path = os.path.join('./checkpoints', 'generator_checkpoint_epoch{}.pth'.format(epoch))
-        discriminator_path = os.path.join('./checkpoints', 'discriminator_checkpoint_epoch{}.pth'.format(epoch))
+        generator_path = os.path.join(checkpoint_path, 'generator_checkpoint_epoch{}.pth'.format(epoch))
+        discriminator_path = os.path.join(checkpoint_path, 'discriminator_checkpoint_epoch{}.pth'.format(epoch))
 
         torch.save(generator_checkpoint, generator_path)
         torch.save(discriminator_checkpoint, discriminator_path)
