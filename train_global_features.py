@@ -79,8 +79,6 @@ for epoch in range(1, EPOCH+1):
         loss_l1 = l1_loss(img_lab[:, 1:, :, :], fake_img_ab)
         loss_class = class_loss(label, target.to(device))
 
-        print("adv loss: {}\nl1 loss: {}\nclass loss:{}".format((1/100) * loss_adversarial, loss_l1, (1/300) * loss_class))
-
         gen_total_loss = (1/100) * loss_adversarial + loss_l1 + (1/300) * loss_class
         gen_total_loss.backward()
         opt_gen.step()
@@ -89,7 +87,8 @@ for epoch in range(1, EPOCH+1):
             with torch.no_grad():
                 print(
                     f"Epoch [{epoch}/{EPOCH}] Batch {batch_idx}/{len(train_loader)} \
-                    Loss Disc: {disc_total_loss:.4f}, Loss Gen: {gen_total_loss:.4f}"
+                    Loss Disc: {disc_total_loss:.4f} (loss_real: {loss_real} / loss_fake: {loss_fake}), \
+                    Loss Gen: {gen_total_loss:.4f} (loss_adversarial: {loss_adversarial} / loss_l1: {loss_l1} / loss_class: {loss_class})"
                 )
 
                 img_grid_real = torchvision.utils.make_grid(img_lab)
