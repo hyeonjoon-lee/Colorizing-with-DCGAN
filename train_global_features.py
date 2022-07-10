@@ -10,7 +10,7 @@ LR_DISC = 6e-5  # Initial learning rate for the discriminator (different from th
 BATCH_SIZE = 32  # Batch size is also different from the paper
 EPOCH = 200
 FEATURES = 64
-NORMALIZATION = "batch"
+NORMALIZATION = "instance"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Setting up models

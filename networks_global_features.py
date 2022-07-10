@@ -15,9 +15,13 @@ class ConvLayer(nn.Module):
         self.activation = activation_fn
 
     def forward(self, x):
-        x = self.norm(self.conv(x)) if self.norm is not None else self.conv(x)
-        x = self.activation(x) if self.activation is not None else x
-        return x
+        x = self.conv(x)
+        if self.norm is not None:
+            try:
+                x = self.norm(x)
+            except:
+                pass
+        return self.activation(x) if self.activation is not None else x
 
 
 class FusionLayer(nn.Module):
@@ -167,15 +171,15 @@ if __name__ == '__main__':
     test()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    generator = Generator(channel_l=1, features_dim=64, normalization='batch').to(device)
-    discriminator = Discriminator(channels_lab=3, features_dim=64, normalization='batch').to(device)
+    generator = Generator(channel_l=1, features_dim=64, normalization='instance').to(device)
+    discriminator = Discriminator(channels_lab=3, features_dim=64, normalization='instance').to(device)
 
     initialize_weights(generator)
     initialize_weights(discriminator)
 
     # run through the dataset and display the first image of every batch
     for idx, sample in enumerate(test_loader):
-        img_l, real_img_lab = sample[:, 0:1, :, :].to(device), sample.to(device)
+        img_l, real_img_lab = sample[0][:, 0:1, :, :].to(device), sample[0].to(device)
 
         # generate images with generator model
         fake_img_ab = generator(img_l)[0].detach()
