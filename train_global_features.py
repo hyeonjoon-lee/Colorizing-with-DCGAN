@@ -1,16 +1,16 @@
-import os.path
+import os.path, sys
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from networks_global_features import Generator, Discriminator, initialize_weights
 from dataloader_global_features import *
 
 # Hyperparameters
-LR_GEN = 3e-4  # Initial learning rate for the generator (different from the paper)
-LR_DISC = 6e-5  # Initial learning rate for the discriminator (different from the paper)
+LR_GEN = 2e-4  # Initial learning rate for the generator (same as the paper)
+LR_DISC = 2e-4  # Initial learning rate for the discriminator (same as the paper)
 BATCH_SIZE = 32  # Batch size is also different from the paper
 EPOCH = 200
 FEATURES = 64
-NORMALIZATION = "instance"
+NORMALIZATION = "group"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Setting up models
@@ -24,8 +24,8 @@ initialize_weights(discriminator)
 # Optimizers & Scheduler
 opt_gen = optim.Adam(generator.parameters(), lr=LR_GEN, betas=(0.5, 0.999))
 opt_disc = optim.Adam(discriminator.parameters(), lr=LR_DISC, betas=(0.5, 0.999))
-gen_scheduler = optim.lr_scheduler.StepLR(opt_gen, step_size=4, gamma=0.1)
-disc_scheduler = optim.lr_scheduler.StepLR(opt_disc, step_size=4, gamma=0.1)
+gen_scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt_gen, patience=4, threshold=1e-3)
+disc_scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt_disc, patience=4, threshold=1e-3)
 
 # Losses
 l1_loss = torch.nn.L1Loss()
@@ -83,7 +83,7 @@ for epoch in range(1, EPOCH+1):
         gen_total_loss.backward()
         opt_gen.step()
 
-        if batch_idx % 100 == 0:
+        if batch_idx % 300 == 0:
             with torch.no_grad():
                 print(
                     f"Epoch [{epoch}/{EPOCH}] Batch {batch_idx}/{len(train_loader)} \
@@ -120,5 +120,5 @@ for epoch in range(1, EPOCH+1):
 
         print("Model Saved at Epoch {}".format(epoch))
 
-    gen_scheduler.step()
-    disc_scheduler.step()
+    gen_scheduler.step(gen_total_loss)
+    disc_scheduler.step(disc_total_loss)
