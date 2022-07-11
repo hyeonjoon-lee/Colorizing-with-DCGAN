@@ -5,9 +5,9 @@ from networks import Generator, Discriminator, initialize_weights
 from dataloader import *
 
 # Hyperparameters
-LR_GEN = 2e-4  # Initial learning rate for the generator (same as the paper)
-LR_DISC = 2e-4  # Initial learning rate for the discriminator (same as the paper)
-BATCH_SIZE = 128  # Batch size (same as the paper)
+LR_GEN = 3e-4  # Initial learning rate for the generator
+LR_DISC = 6e-5  # Initial learning rate for the discriminator
+BATCH_SIZE = 32  # Batch size
 EPOCH = 200
 NORMALIZATION = "batch"
 
@@ -30,8 +30,8 @@ initialize_weights(discriminator)
 # Optimizers & Scheduler
 opt_gen = optim.Adam(generator.parameters(), lr=LR_GEN, betas=(0.5, 0.999))
 opt_disc = optim.Adam(discriminator.parameters(), lr=LR_DISC, betas=(0.5, 0.999))
-gen_scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt_gen, patience=4, threshold=1e-3)
-disc_scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt_disc, patience=4, threshold=1e-3)
+gen_scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt_gen, patience=4)
+disc_scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt_disc, patience=4)
 
 # Losses
 l1_loss = torch.nn.L1Loss()
@@ -101,7 +101,7 @@ for epoch in range(1, EPOCH+1):
         gen_total_loss.backward()
         opt_gen.step()
 
-        if batch_idx % 130 == 0:
+        if batch_idx % 300 == 0:
             with torch.no_grad():
                 if USE_GLOBAL:
                     status = f"Epoch [{epoch}/{EPOCH}] Batch {batch_idx + 1}/{len(train_loader)}\t" \
@@ -113,8 +113,8 @@ for epoch in range(1, EPOCH+1):
                                f"Loss Gen:{gen_total_loss:.4f} (adversarial:{loss_adversarial:.4f} / l1:{loss_l1:.4f}) "
                 print(status)
 
-                img_grid_real = torchvision.utils.make_grid(img_lab, nrow=16)
-                img_grid_fake = torchvision.utils.make_grid(fake_img_lab, nrow=16)
+                img_grid_real = torchvision.utils.make_grid(img_lab)
+                img_grid_fake = torchvision.utils.make_grid(fake_img_lab)
 
                 writer_real.add_image("Real", toRGB(img_grid_real.cpu()), global_step=step, dataformats='HWC')
                 writer_fake.add_image("Fake", toRGB(img_grid_fake.cpu()), global_step=step, dataformats='HWC')
