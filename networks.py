@@ -57,7 +57,7 @@ class TransConvLayer(nn.Module):
 class Discriminator(nn.Module):
     """
     Discriminator
-    No normalization in the first & last layers
+    No normalization in the first layer
     """
 
     def __init__(self, channels_lab, features_dim, normalization=None):
@@ -67,7 +67,7 @@ class Discriminator(nn.Module):
             ConvLayer(features_dim, features_dim * 2, norm=normalization),  # 128 x 16 x 16
             ConvLayer(features_dim * 2, features_dim * 4, norm=normalization),  # 256 x 8 x 8
             ConvLayer(features_dim * 4, features_dim * 8, norm=normalization),  # 512 x 4 x 4
-            ConvLayer(features_dim * 8, 1, stride=1, padding=0, activation_fn=nn.Sigmoid()),    # 1 x 1 x 1
+            ConvLayer(features_dim * 8, 1, norm=normalization, stride=1, padding=0, activation_fn=nn.Sigmoid()),    # 1 x 1 x 1
         )
 
     def forward(self, x):

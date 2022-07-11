@@ -56,10 +56,10 @@ if __name__ == '__main__':
     test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True,
                                                 transform=transforms.ToTensor())
 
-    train_loader = DataLoader(LABDataset(train_dataset), batch_size=32, shuffle=True)
-    test_loader = DataLoader(LABDataset(test_dataset), batch_size=32, shuffle=False)
+    train_loader = DataLoader(LABDataset(train_dataset), batch_size=4, shuffle=True)
+    test_loader = DataLoader(LABDataset(test_dataset), batch_size=4, shuffle=False)
 
-    for idx, (sample, target) in enumerate(test_loader):
+    for idx, (sample, target) in enumerate(train_loader):
         for i in range(len(target)):
             print(target[i])
             plt.imshow(toRGB(sample[i]))
