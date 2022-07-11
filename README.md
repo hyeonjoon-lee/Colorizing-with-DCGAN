@@ -1,5 +1,6 @@
 # Colorizing-with-DCGAN
 Pytorch implementation of "_Image Colorization using Generative Adversarial Networks (Nazeri et al., 2018)_."  
+
 Added extra layers in the generator to incorporate global features, inspired by "_Let there be Color!: Joint End-to-end Learning of Global and Local Image Priors
 for Automatic Image Colorization with Simultaneous Classification (Iizuka et al., 2016)_." 
 
