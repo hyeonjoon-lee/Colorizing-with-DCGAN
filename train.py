@@ -55,6 +55,7 @@ if not os.path.exists(checkpoint_path):
     os.makedirs(checkpoint_path)
 
 for epoch in range(1, EPOCH + 1):
+    print(f'===================================== EPOCH {epoch} =====================================')
     gen_epoch_loss = 0
     disc_epoch_loss = 0
     for batch_idx, (sample, target) in enumerate(train_loader):
@@ -62,15 +63,31 @@ for epoch in range(1, EPOCH + 1):
         img_l = sample[:, 0:1, :, :].float().to(device)
         img_lab = sample.float().to(device)
 
+        # Targets for calculating loss
+        target_ones = torch.ones(img_lab.size(0), 1).to(device)  # N x 1
+        target_zeros = torch.zeros(img_lab.size(0), 1).to(device)  # N x 1
+
+        ### Train Generator -> min (-log(D(G(0_z|x))) + lambda * |G(0_z|x) - y|_1)
+        generator.zero_grad()
+
         if USE_GLOBAL:
             fake_img_ab, label = generator(img_l)
         else:
             fake_img_ab = generator(img_l)
         fake_img_lab = torch.cat([img_l, fake_img_ab], dim=1).to(device)
 
-        # Targets for calculating loss
-        target_ones = torch.ones(img_lab.size(0), 1).to(device)  # N x 1
-        target_zeros = torch.zeros(img_lab.size(0), 1).to(device)  # N x 1
+        loss_adversarial = disc_loss(discriminator(fake_img_lab), target_ones)
+        loss_l1 = l1_loss(img_lab[:, 1:, :, :], fake_img_ab)
+
+        if USE_GLOBAL:
+            loss_class = class_loss(label, target.to(device))
+            gen_total_loss = (1 / 100) * loss_adversarial + loss_l1 + (1 / 300) * loss_class
+        else:
+            gen_total_loss = (1 / 100) * loss_adversarial + loss_l1
+
+        gen_epoch_loss += gen_total_loss
+        gen_total_loss.backward()
+        opt_gen.step()
 
         ### Train Discriminator -> max (log(D(y|x)) + log(1 - D(G(0_z|x)|x)))
         discriminator.zero_grad()
@@ -84,22 +101,6 @@ for epoch in range(1, EPOCH + 1):
         disc_epoch_loss += disc_total_loss
         disc_total_loss.backward()
         opt_disc.step()
-
-        ### Train Generator -> min (-log(D(G(0_z|x))) + lambda * |G(0_z|x) - y|_1)
-        generator.zero_grad()
-
-        loss_adversarial = disc_loss(discriminator(fake_img_lab), target_ones)
-        loss_l1 = l1_loss(img_lab, fake_img_lab)
-
-        if USE_GLOBAL:
-            loss_class = class_loss(label, target.to(device))
-            gen_total_loss = (1 / 100) * loss_adversarial + loss_l1 + (1 / 300) * loss_class
-        else:
-            gen_total_loss = (1 / 100) * loss_adversarial + loss_l1
-
-        gen_epoch_loss += gen_total_loss
-        gen_total_loss.backward()
-        opt_gen.step()
 
         if batch_idx % 130 == 0:
             with torch.no_grad():
@@ -141,6 +142,8 @@ for epoch in range(1, EPOCH + 1):
         torch.save(discriminator_checkpoint, discriminator_path)
 
         print("Model Saved at Epoch {}".format(epoch))
+
+    print(f'Total Generator Loss: {gen_epoch_loss / len(train_loader)}\tTotal Discriminator Loss : {disc_epoch_loss / len(train_loader)}')
 
     gen_scheduler.step()
     disc_scheduler.step()
