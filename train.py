@@ -13,7 +13,7 @@ import argparse
 LR_GEN = 3e-4  # Initial learning rate for the generator
 LR_DISC = 6e-5  # Initial learning rate for the discriminator
 BATCH_SIZE = 32  # Batch size
-EPOCH = 200
+EPOCH = 100
 
 
 def get_args():
