@@ -44,7 +44,7 @@ def train(arg):
     opt_gen = optim.Adam(generator.parameters(), lr=LR_GEN, betas=(0.5, 0.999))
     opt_disc = optim.Adam(discriminator.parameters(), lr=LR_DISC, betas=(0.5, 0.999))
     # gen_scheduler = optim.lr_scheduler.StepLR(opt_gen, step_size=50)
-    disc_scheduler = optim.lr_scheduler.StepLR(opt_disc, step_size=20)
+    disc_scheduler = optim.lr_scheduler.StepLR(opt_disc, step_size=50)
 
     # Losses
     l1_loss = torch.nn.L1Loss()
