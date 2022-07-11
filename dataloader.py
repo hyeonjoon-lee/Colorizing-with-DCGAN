@@ -33,30 +33,34 @@ def toLAB(dataset):
     return lab
 
 
-train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transforms.ToTensor())
-test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transforms.ToTensor())
-
-
 class LABDataset(torch.utils.data.Dataset):
     """Lab dataset"""
 
-    def __init__(self, train=True):
-        self.dataset = toLAB(train_dataset if train else test_dataset)
+    def __init__(self, dataset):
+        self.dataset = {
+            'data': toLAB(dataset),
+            'labels': dataset.targets
+        }
 
     def __len__(self):
-        return len(self.dataset)
+        return len(self.dataset['labels'])
 
     def __getitem__(self, index):
-        img = self.dataset[index]
-        return img
+        img, label = self.dataset['data'][index], self.dataset['labels'][index]
+        return img, label
 
-
-train_loader = DataLoader(LABDataset(train=True), batch_size=32, shuffle=True)
-test_loader = DataLoader(LABDataset(train=False), batch_size=32, shuffle=False)
 
 if __name__ == '__main__':
-    print(len(test_loader))
-    for idx, sample in enumerate(test_loader):
-        for i in range(len(sample)):
+    train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True,
+                                                 transform=transforms.ToTensor())
+    test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True,
+                                                transform=transforms.ToTensor())
+
+    train_loader = DataLoader(LABDataset(train_dataset), batch_size=32, shuffle=True)
+    test_loader = DataLoader(LABDataset(test_dataset), batch_size=32, shuffle=False)
+
+    for idx, (sample, target) in enumerate(test_loader):
+        for i in range(len(target)):
+            print(target[i])
             plt.imshow(toRGB(sample[i]))
             plt.show()

@@ -7,15 +7,21 @@ from dataloader import *
 # Hyperparameters
 LR_GEN = 2e-4  # Initial learning rate for the generator (same as the paper)
 LR_DISC = 2e-4  # Initial learning rate for the discriminator (same as the paper)
-BATCH_SIZE = 32  # Batch size is also different from the paper
+BATCH_SIZE = 128  # Batch size (same as the paper)
 EPOCH = 200
-FEATURES = 64
-NORMALIZATION = "group"
+NORMALIZATION = "batch"
+
+USE_GLOBAL = False
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# Prepare data
+train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True,
+                                             transform=transforms.ToTensor())
+train_loader = DataLoader(LABDataset(train_dataset), batch_size=BATCH_SIZE, shuffle=True)
+
 # Setting up models
-generator = Generator(channel_l=1, features_dim=FEATURES, normalization=NORMALIZATION).to(device)
-discriminator = Discriminator(channels_lab=3, features_dim=FEATURES, normalization=NORMALIZATION).to(device)
+generator = Generator(channel_l=1, features_dim=64, normalization=NORMALIZATION, use_global=USE_GLOBAL).to(device)
+discriminator = Discriminator(channels_lab=3, features_dim=64, normalization=NORMALIZATION).to(device)
 
 # Initializing weights
 initialize_weights(generator)
@@ -28,31 +34,38 @@ gen_scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt_gen, patience=4, thresh
 disc_scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt_disc, patience=4, threshold=1e-3)
 
 # Losses
-l1_loss = torch.nn.L1Loss(reduction='mean')
-disc_loss = torch.nn.BCELoss(reduction='mean')
+l1_loss = torch.nn.L1Loss()
+disc_loss = torch.nn.BCELoss()
+class_loss = torch.nn.CrossEntropyLoss()
+
+path = '{}_global'.format(NORMALIZATION) if USE_GLOBAL else NORMALIZATION
 
 # Tensorboard
-writer_real = SummaryWriter("logs/{}/real".format(NORMALIZATION))
-writer_fake = SummaryWriter("logs/{}/fake".format(NORMALIZATION))
-writer = SummaryWriter("logs/{}/Losses".format(NORMALIZATION))
+writer_real = SummaryWriter("logs/{}/real".format(path))
+writer_fake = SummaryWriter("logs/{}/fake".format(path))
+writer = SummaryWriter("logs/{}/Losses".format(path))
 step = 0
 
 generator.train()
 discriminator.train()
 
-checkpoint_path = os.path.join('./checkpoints', NORMALIZATION)
+checkpoint_path = os.path.join('./checkpoints', path)
 
 if not os.path.exists(checkpoint_path):
     os.makedirs(checkpoint_path)
 
 for epoch in range(1, EPOCH+1):
-
-    for batch_idx, sample in enumerate(train_loader):
+    gen_epoch_loss = 0
+    disc_epoch_loss = 0
+    for batch_idx, (sample, target) in enumerate(train_loader):
 
         img_l = sample[:, 0:1, :, :].float().to(device)
         img_lab = sample.float().to(device)
 
-        fake_img_ab = generator(img_l)
+        if USE_GLOBAL:
+            fake_img_ab, label = generator(img_l)
+        else:
+            fake_img_ab = generator(img_l)
         fake_img_lab = torch.cat([img_l, fake_img_ab], dim=1).to(device)
 
         # Targets for calculating loss
@@ -68,6 +81,7 @@ for epoch in range(1, EPOCH+1):
         loss_fake = disc_loss(fake, target_zeros)
 
         disc_total_loss = loss_real + loss_fake
+        disc_epoch_loss += disc_total_loss
         disc_total_loss.backward()
         opt_disc.step()
 
@@ -75,21 +89,32 @@ for epoch in range(1, EPOCH+1):
         generator.zero_grad()
 
         loss_adversarial = disc_loss(discriminator(fake_img_lab), target_ones)
-        loss_l1 = l1_loss(img_lab[:, 1:, :, :], fake_img_ab)
+        loss_l1 = l1_loss(img_lab, fake_img_lab)
 
-        gen_total_loss = 0.01 * loss_adversarial + loss_l1
+        if USE_GLOBAL:
+            loss_class = class_loss(label, target.to(device))
+            gen_total_loss = (1 / 100) * loss_adversarial + loss_l1 + (1 / 300) * loss_class
+        else:
+            gen_total_loss = (1 / 100) * loss_adversarial + loss_l1
+
+        gen_epoch_loss += gen_total_loss
         gen_total_loss.backward()
         opt_gen.step()
 
-        if batch_idx % 100 == 0:
+        if batch_idx % 130 == 0:
             with torch.no_grad():
-                print(
-                    f"Epoch [{epoch}/{EPOCH}] Batch {batch_idx}/{len(train_loader)} \
-                    Loss Disc: {disc_total_loss:.4f}, Loss Gen: {gen_total_loss:.4f}"
-                )
+                if USE_GLOBAL:
+                    status = f"Epoch [{epoch}/{EPOCH}] Batch {batch_idx + 1}/{len(train_loader)}\t" \
+                               f"Loss Disc:{disc_total_loss:.4f} (real:{loss_real:.4f} / fake:{loss_fake:.4f}), " \
+                               f"Loss Gen:{gen_total_loss:.4f} (adversarial:{loss_adversarial:.4f} / l1:{loss_l1:.4f} / class:{loss_class:.4f}) "
+                else:
+                    status = f"Epoch [{epoch}/{EPOCH}] Batch {batch_idx + 1}/{len(train_loader)}\t" \
+                               f"Loss Disc:{disc_total_loss:.4f} (real:{loss_real:.4f} / fake:{loss_fake:.4f}), " \
+                               f"Loss Gen:{gen_total_loss:.4f} (adversarial:{loss_adversarial:.4f} / l1:{loss_l1:.4f}) "
+                print(status)
 
-                img_grid_real = torchvision.utils.make_grid(img_lab)
-                img_grid_fake = torchvision.utils.make_grid(fake_img_lab)
+                img_grid_real = torchvision.utils.make_grid(img_lab, nrow=16)
+                img_grid_fake = torchvision.utils.make_grid(fake_img_lab, nrow=16)
 
                 writer_real.add_image("Real", toRGB(img_grid_real.cpu()), global_step=step, dataformats='HWC')
                 writer_fake.add_image("Fake", toRGB(img_grid_fake.cpu()), global_step=step, dataformats='HWC')
@@ -109,13 +134,13 @@ for epoch in range(1, EPOCH+1):
             "model_state": discriminator.state_dict(),
             "optim_state": opt_disc.state_dict()
         }
-        generator_path = os.path.join(checkpoint_path, 'generator_checkpoint_epoch{}.pth'.format(epoch))
-        discriminator_path = os.path.join(checkpoint_path, 'discriminator_checkpoint_epoch{}.pth'.format(epoch))
+        generator_path = os.path.join(checkpoint_path, 'generator_epoch{}.pth'.format(epoch))
+        discriminator_path = os.path.join(checkpoint_path, 'discriminator_epoch{}.pth'.format(epoch))
 
         torch.save(generator_checkpoint, generator_path)
         torch.save(discriminator_checkpoint, discriminator_path)
 
         print("Model Saved at Epoch {}".format(epoch))
 
-    gen_scheduler.step(gen_total_loss)
-    disc_scheduler.step(disc_total_loss)
+    gen_scheduler.step(gen_epoch_loss / len(train_loader))
+    disc_scheduler.step(disc_epoch_loss / len(train_loader))
