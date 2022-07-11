@@ -19,7 +19,7 @@ EPOCH = 200
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--normalization', type=str, default='batch', choices=['batch', 'instance', 'group'], help='type of normalization in the networks')
-    parser.add_argument('--use_global', type=bool, default=True, help='whether to use global features network')
+    parser.add_argument('--use_global', default=True, type=lambda x: (str(x).lower() == 'true'), help='whether to use global features network')
     return parser.parse_args()
 
 
