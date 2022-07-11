@@ -5,9 +5,9 @@ from networks import Generator, Discriminator, initialize_weights
 from dataloader import *
 
 # Hyperparameters
-LR_GEN = 3e-4  # Initial learning rate for the generator
-LR_DISC = 6e-5  # Initial learning rate for the discriminator
-BATCH_SIZE = 32  # Batch size
+LR_GEN = 2e-4  # Initial learning rate for the generator
+LR_DISC = 2e-4  # Initial learning rate for the discriminator
+BATCH_SIZE = 128  # Batch size
 EPOCH = 200
 NORMALIZATION = "batch"
 
@@ -30,8 +30,8 @@ initialize_weights(discriminator)
 # Optimizers & Scheduler
 opt_gen = optim.Adam(generator.parameters(), lr=LR_GEN, betas=(0.5, 0.999))
 opt_disc = optim.Adam(discriminator.parameters(), lr=LR_DISC, betas=(0.5, 0.999))
-gen_scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt_gen, patience=4)
-disc_scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt_disc, patience=4)
+gen_scheduler = optim.lr_scheduler.StepLR(opt_gen, step_size=50)
+disc_scheduler = optim.lr_scheduler.StepLR(opt_disc, step_size=50)
 
 # Losses
 l1_loss = torch.nn.L1Loss()
@@ -142,5 +142,5 @@ for epoch in range(1, EPOCH+1):
 
         print("Model Saved at Epoch {}".format(epoch))
 
-    gen_scheduler.step(gen_epoch_loss / len(train_loader))
-    disc_scheduler.step(disc_epoch_loss / len(train_loader))
+    gen_scheduler.step()
+    disc_scheduler.step()
