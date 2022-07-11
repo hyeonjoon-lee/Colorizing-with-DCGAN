@@ -101,7 +101,7 @@ for epoch in range(1, EPOCH+1):
         gen_total_loss.backward()
         opt_gen.step()
 
-        if batch_idx % 300 == 0:
+        if batch_idx % 130 == 0:
             with torch.no_grad():
                 if USE_GLOBAL:
                     status = f"Epoch [{epoch}/{EPOCH}] Batch {batch_idx + 1}/{len(train_loader)}\t" \
