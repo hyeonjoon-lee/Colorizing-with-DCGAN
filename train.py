@@ -54,7 +54,7 @@ checkpoint_path = os.path.join('./checkpoints', path)
 if not os.path.exists(checkpoint_path):
     os.makedirs(checkpoint_path)
 
-for epoch in range(1, EPOCH+1):
+for epoch in range(1, EPOCH + 1):
     gen_epoch_loss = 0
     disc_epoch_loss = 0
     for batch_idx, (sample, target) in enumerate(train_loader):
