@@ -10,7 +10,7 @@ class ConvLayer(nn.Module):
         self.norm = {
             'batch': nn.BatchNorm2d(out_channel),
             'instance': nn.InstanceNorm2d(out_channel),
-            'group': nn.GroupNorm(int(out_channel / 4), out_channel) if not out_channel % 2 else nn.GroupNorm(1, out_channel)
+            'group': nn.GroupNorm(int(out_channel / 4), out_channel) if not out_channel % 4 else nn.GroupNorm(1, out_channel)
         }[norm] if norm is not None else norm
         self.activation = activation_fn
 
@@ -42,7 +42,7 @@ class TransConvLayer(nn.Module):
         self.norm = {
             'batch': nn.BatchNorm2d(out_channel),
             'instance': nn.InstanceNorm2d(out_channel),
-            'group': nn.GroupNorm(int(out_channel / 4), out_channel) if not out_channel % 2 else nn.GroupNorm(1, out_channel)
+            'group': nn.GroupNorm(int(out_channel / 4), out_channel) if not out_channel % 4 else nn.GroupNorm(1, out_channel)
         }[norm] if norm is not None else norm
         self.activation = activation_fn
         self.dropout = nn.Dropout(dropout) if dropout > 0 else None
@@ -142,13 +142,13 @@ class Generator(nn.Module):
         return (x, self.classifier(g).view(-1, 10)) if self.use_global else x
 
 
-def initialize_weights(model):
-    for m in model.modules():
-        if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
-            nn.init.normal_(m.weight.data, 0.0, 0.02)
-        elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-            nn.init.normal_(m.weight.data, 1.0, 0.02)
-            nn.init.constant_(m.bias.data, 0.0)
+def initialize_weights(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv2d') != -1 or classname.find('ConvTranspose2d') != -1:
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find('BatchNorm2d') != -1 or classname.find('GroupNorm') != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0.0)
 
 
 def test():

@@ -11,7 +11,7 @@ BATCH_SIZE = 32  # Batch size
 EPOCH = 200
 NORMALIZATION = "batch"
 
-USE_GLOBAL = False
+USE_GLOBAL = True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Prepare data
