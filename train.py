@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torchvision
 import torchvision.transforms as transforms
-from networks import Generator, Discriminator, initialize_weights
+from network_new import Generator, Discriminator, initialize_weights
 from dataloader import toRGB, LABDataset
 import argparse
 
@@ -20,6 +20,8 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--normalization', type=str, default='batch', choices=['batch', 'instance', 'group'], help='type of normalization in the networks')
     parser.add_argument('--use_global', default=True, type=lambda x: (str(x).lower() == 'true'), help='whether to use global features network')
+    parser.add_argument('--use_tanh', default=True, type=lambda x: (str(x).lower() == 'true'), help='whether to use tanh in the last layer of the generator')
+
     return parser.parse_args()
 
 
@@ -33,7 +35,7 @@ def train(arg):
 
 
     # Setting up models
-    generator = Generator(channel_l=1, features_dim=64, normalization=arg.normalization, use_global=arg.use_global).to(device)
+    generator = Generator(channel_l=1, features_dim=64, normalization=arg.normalization, use_global=arg.use_global, use_tanh=arg.use_tanh).to(device)
     discriminator = Discriminator(channels_lab=3, features_dim=64, normalization=arg.normalization).to(device)
 
     # Initializing weights
