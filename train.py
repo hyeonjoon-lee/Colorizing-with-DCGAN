@@ -9,11 +9,11 @@ from network_new import Generator, Discriminator, initialize_weights
 from dataloader import toRGB, LABDataset
 import argparse
 
-# Hyperparameters
-LR_GEN = 3e-4  # Initial learning rate for the generator
-LR_DISC = 2e-4  # Initial learning rate for the discriminator
-BATCH_SIZE = 32  # Batch size
-EPOCH = 100
+# # Hyperparameters
+# LR_GEN = 2e-4  # Initial learning rate for the generator
+# LR_DISC = 1e-5  # Initial learning rate for the discriminator
+# BATCH_SIZE = 32  # Batch size
+# EPOCH = 50
 
 
 def get_args():
@@ -21,7 +21,12 @@ def get_args():
     parser.add_argument('--normalization', type=str, default='batch', choices=['batch', 'instance', 'group'], help='type of normalization in the networks')
     parser.add_argument('--use_global', default=True, type=lambda x: (str(x).lower() == 'true'), help='whether to use global features network')
     parser.add_argument('--use_tanh', default=True, type=lambda x: (str(x).lower() == 'true'), help='whether to use tanh in the last layer of the generator')
-
+    parser.add_argument('--lr_gen', type=float, default=2e-4, help='initial lr for generator')
+    parser.add_argument('--lr_disc', type=float, default=1e-5, help='initial lr for discriminator')
+    parser.add_argument('--batch', type=int, default=32, help='batch size')
+    parser.add_argument('--epoch', type=int, default=50, help='max epoch')
+    parser.add_argument('--lr_gen_step', type=int, default=10, help='frequency for decaying lr gen')
+    parser.add_argument('--lr_disc_step', type=int, default=10, help='frequency for decaying lr disc')
     return parser.parse_args()
 
 
@@ -31,7 +36,7 @@ def train(arg):
     # Prepare data
     train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True,
                                                  transform=transforms.ToTensor())
-    train_loader = DataLoader(LABDataset(train_dataset), batch_size=BATCH_SIZE, shuffle=True)
+    train_loader = DataLoader(LABDataset(train_dataset), batch_size=arg.batch, shuffle=True)
 
 
     # Setting up models
@@ -43,10 +48,10 @@ def train(arg):
     discriminator.apply(initialize_weights)
 
     # Optimizers & Scheduler
-    opt_gen = optim.Adam(generator.parameters(), lr=LR_GEN, betas=(0.5, 0.999))
-    opt_disc = optim.Adam(discriminator.parameters(), lr=LR_DISC, betas=(0.5, 0.999))
-    # gen_scheduler = optim.lr_scheduler.StepLR(opt_gen, step_size=50)
-    disc_scheduler = optim.lr_scheduler.StepLR(opt_disc, step_size=50)
+    opt_gen = optim.Adam(generator.parameters(), lr=arg.lr_gen, betas=(0.5, 0.999))
+    opt_disc = optim.Adam(discriminator.parameters(), lr=arg.lr_disc, betas=(0.5, 0.999))
+    gen_scheduler = optim.lr_scheduler.StepLR(opt_gen, step_size=arg.lr_gen_step)
+    disc_scheduler = optim.lr_scheduler.StepLR(opt_disc, step_size=arg.lr_disc_step)
 
     # Losses
     l1_loss = torch.nn.L1Loss()
@@ -69,7 +74,7 @@ def train(arg):
     if not os.path.exists(checkpoint_path):
         os.makedirs(checkpoint_path)
 
-    for epoch in range(1, EPOCH + 1):
+    for epoch in range(1, arg.epoch + 1):
         print(f'===================================== EPOCH {epoch} =====================================')
         gen_epoch_loss = 0
         disc_epoch_loss = 0
@@ -120,11 +125,11 @@ def train(arg):
             if batch_idx % 300 == 0:
                 with torch.no_grad():
                     if arg.use_global:
-                        status = f"Epoch [{epoch}/{EPOCH}] Batch {batch_idx + 1}/{len(train_loader)}\t" \
+                        status = f"Epoch [{epoch}/{arg.epoch}] Batch {batch_idx + 1}/{len(train_loader)}\t" \
                                    f"Loss Disc:{disc_total_loss:.4f} (real:{loss_real:.4f} / fake:{loss_fake:.4f}), " \
                                    f"Loss Gen:{gen_total_loss:.4f} (adversarial:{loss_adversarial:.4f} / l1:{loss_l1:.4f} / class:{loss_class:.4f}) "
                     else:
-                        status = f"Epoch [{epoch}/{EPOCH}] Batch {batch_idx + 1}/{len(train_loader)}\t" \
+                        status = f"Epoch [{epoch}/{arg.epoch}] Batch {batch_idx + 1}/{len(train_loader)}\t" \
                                    f"Loss Disc:{disc_total_loss:.4f} (real:{loss_real:.4f} / fake:{loss_fake:.4f}), " \
                                    f"Loss Gen:{gen_total_loss:.4f} (adversarial:{loss_adversarial:.4f} / l1:{loss_l1:.4f}) "
                     print(status)
@@ -160,10 +165,11 @@ def train(arg):
 
         print(f'Total Generator Loss: {gen_epoch_loss / len(train_loader)}\tTotal Discriminator Loss : {disc_epoch_loss / len(train_loader)}')
 
-        # gen_scheduler.step()
+        gen_scheduler.step()
         disc_scheduler.step()
 
 
 if __name__ == '__main__':
     args = get_args()
+    print(args)
     train(args)

@@ -7,3 +7,4 @@ __pycache__/
 logs/
 checkpoints/
 image/
+logs_save_dir/

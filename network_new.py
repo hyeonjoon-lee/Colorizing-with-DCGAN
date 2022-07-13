@@ -139,7 +139,6 @@ class Generator(nn.Module):
 
 def initialize_weights(m):
     classname = m.__class__.__name__
-    print(classname)
     if classname.find('Conv2d') != -1:
         nn.init.normal_(m.weight.data, 0.0, 0.02)
     elif classname.find('BatchNorm2d') != -1 or classname.find('GroupNorm') != -1:
