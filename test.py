@@ -5,12 +5,10 @@ import torch
 from torch.utils.data import DataLoader
 import torchvision
 import torchvision.transforms as transforms
-from networks import Generator
+from network_new import Generator
 from dataloader import toRGB, LABDataset
 import argparse
 from PIL import Image
-
-BATCH_SIZE = 32  # Batch size
 
 
 def test(arg):
@@ -18,12 +16,12 @@ def test(arg):
 
     test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True,
                                                 transform=transforms.ToTensor())
-    test_loader = DataLoader(LABDataset(test_dataset), batch_size=BATCH_SIZE, shuffle=False)
+    test_loader = DataLoader(LABDataset(test_dataset), batch_size=arg.batch, shuffle=False)
 
     path = '{}_global'.format(arg.normalization) if arg.use_global else arg.normalization
     print(path)
 
-    loaded_path = os.path.join('./checkpoints', path, 'generator_epoch40.pth')
+    loaded_path = os.path.join('./checkpoints', path, 'generator_epoch50.pth')
     loaded_checkpoint = torch.load(loaded_path)
 
     generator = Generator(channel_l=1, features_dim=64, normalization=arg.normalization, use_global=arg.use_global).to(device)
@@ -33,13 +31,13 @@ def test(arg):
         'fake': os.path.join('./image', path),
         'real': os.path.join('./image', 'real')
     }
-    for path in ['fake', 'real']:
-        if not os.path.exists(img_path[path]):
-            os.makedirs(img_path[path])
+    for img in ['fake', 'real']:
+        if not os.path.exists(img_path[img]):
+            os.makedirs(img_path[img])
         else:
-            for file in os.listdir(img_path[path]):
-                file_path = os.path.join(img_path[path], file)
-                if os.path.isfile(file_path):
+            for file in os.listdir(img_path[img]):
+                file_path = os.path.join(img_path[img], file)
+                if os.path.isfile(file_path) and ('real' not in file_path or arg.remove_real):
                     print('Deleting file: {}'.format(file_path))
                     os.remove(file_path)
 
@@ -56,11 +54,12 @@ def test(arg):
 
             mean_absolute_error += criterion(fake_img_lab, img_lab)
 
-            img_lab = Image.fromarray(toRGB(torchvision.utils.make_grid(img_lab).cpu()))
             fake_img_lab = Image.fromarray(toRGB(torchvision.utils.make_grid(fake_img_lab).cpu()))
+            fake_img_lab.save(str(os.path.join(img_path['fake'], f'{path}_{idx:04d}.jpeg')))
 
-            img_lab.save(str(os.path.join(img_path['real'], f'real{idx:04d}.jpeg')))
-            fake_img_lab.save(str(os.path.join(img_path['fake'], f'fake{idx:04d}.jpeg')))
+            if arg.remove_real:
+                img_lab = Image.fromarray(toRGB(torchvision.utils.make_grid(img_lab).cpu()))
+                img_lab.save(str(os.path.join(img_path['real'], f'real{idx:04d}.jpeg')))
 
     print("Images successfully saved!")
     print(f"Mean Absolute Error: {mean_absolute_error / len(test_loader):.4f}")
@@ -69,6 +68,8 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--normalization', type=str, default='batch', choices=['batch', 'instance', 'group'], help='type of normalization in the networks')
     parser.add_argument('--use_global', default=True, type=lambda x: (str(x).lower() == 'true'), help='whether to use global features network')
+    parser.add_argument('--batch', type=int, default=32, help='batch size')
+    parser.add_argument('--remove_real', default=False, type=lambda x: (str(x).lower() == 'true'), help='whether to remove saved real images')
     return parser.parse_args()
 
 
