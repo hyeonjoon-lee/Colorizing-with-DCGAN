@@ -3,6 +3,15 @@ import torch.nn as nn
 from dataloader import *
 import pytorch_model_summary
 
+"""
+@inproceedings{nazeri2018image,
+  title={Image Colorization Using Generative Adversarial Networks},
+  author={Nazeri, Kamyar and Ng, Eric and Ebrahimi, Mehran},
+  booktitle={International Conference on Articulated Motion and Deformable Objects},
+  pages={85--94},
+  year={2018},
+  organization={Springer}
+}"""
 
 class ConvLayer(nn.Module):
     def __init__(self, in_channel, out_channel, kernel=3, stride=1, padding=1, activation_fn=nn.LeakyReLU(0.2),
