@@ -1,4 +1,4 @@
-import os.path
+import os.path, sys
 
 import matplotlib.pyplot as plt
 import torch
@@ -9,6 +9,12 @@ from network_new import Generator
 from dataloader import toRGB, LABDataset
 import argparse
 from PIL import Image
+from ignite.metrics import *
+from ignite.engine import *
+
+
+def eval_step(engine, batch):
+    return batch
 
 
 def test(arg):
@@ -24,7 +30,8 @@ def test(arg):
     loaded_path = os.path.join('./checkpoints', path, 'generator_epoch50.pth')
     loaded_checkpoint = torch.load(loaded_path)
 
-    generator = Generator(channel_l=1, features_dim=64, normalization=arg.normalization, use_global=arg.use_global).to(device)
+    generator = Generator(channel_l=1, features_dim=64, normalization=arg.normalization, use_global=arg.use_global).to(
+        device)
     generator.load_state_dict(loaded_checkpoint["model_state"])
 
     img_path = {
@@ -41,8 +48,18 @@ def test(arg):
                     print('Deleting file: {}'.format(file_path))
                     os.remove(file_path)
 
-    criterion = torch.nn.L1Loss()
+    mae = torch.nn.L1Loss()
     mean_absolute_error = 0
+
+    default_evaluator = Engine(eval_step)
+
+    ssim = SSIM(data_range=1.0)
+    ssim.attach(default_evaluator, 'ssim')
+    psnr = PSNR(data_range=1.0)
+    psnr.attach(default_evaluator, 'psnr')
+
+    peak_signal = 0
+    structural_similarity = 0
 
     generator.eval()
     with torch.no_grad():
@@ -52,24 +69,33 @@ def test(arg):
             fake_img_ab = generator(img_l)[0].detach() if arg.use_global else generator(img_l).detach()
             fake_img_lab = torch.cat([img_l, fake_img_ab], dim=1)
 
-            mean_absolute_error += criterion(fake_img_lab, img_lab)
+            mean_absolute_error += mae(fake_img_lab, img_lab)
+            state = default_evaluator.run([[fake_img_lab, img_lab]])
+            peak_signal += state.metrics['psnr']
+            structural_similarity += state.metrics['ssim']
 
             fake_img_lab = Image.fromarray(toRGB(torchvision.utils.make_grid(fake_img_lab).cpu()))
-            fake_img_lab.save(str(os.path.join(img_path['fake'], f'{path}_{idx:04d}.jpeg')))
+            img_lab = Image.fromarray(toRGB(torchvision.utils.make_grid(img_lab).cpu()))
 
+            fake_img_lab.save(str(os.path.join(img_path['fake'], f'{path}_{idx:04d}.jpeg')))
             if arg.remove_real:
-                img_lab = Image.fromarray(toRGB(torchvision.utils.make_grid(img_lab).cpu()))
                 img_lab.save(str(os.path.join(img_path['real'], f'real{idx:04d}.jpeg')))
 
     print("Images successfully saved!")
-    print(f"Mean Absolute Error: {mean_absolute_error / len(test_loader):.4f}")
+    print(f"Mean Absolute Error (MAE): {mean_absolute_error / len(test_loader):.4f}")
+    print(f"Peak Signal-to-Noise Ratio (PSNR): {peak_signal / len(test_loader):.4f}")
+    print(f"Structural Similarity Index Measure (SSIM): {structural_similarity / len(test_loader):.4f}")
+
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--normalization', type=str, default='batch', choices=['batch', 'instance', 'group'], help='type of normalization in the networks')
-    parser.add_argument('--use_global', default=True, type=lambda x: (str(x).lower() == 'true'), help='whether to use global features network')
+    parser.add_argument('--normalization', type=str, default='batch', choices=['batch', 'instance', 'group'],
+                        help='type of normalization in the networks')
+    parser.add_argument('--use_global', default=True, type=lambda x: (str(x).lower() == 'true'),
+                        help='whether to use global features network')
     parser.add_argument('--batch', type=int, default=32, help='batch size')
-    parser.add_argument('--remove_real', default=False, type=lambda x: (str(x).lower() == 'true'), help='whether to remove saved real images')
+    parser.add_argument('--remove_real', default=False, type=lambda x: (str(x).lower() == 'true'),
+                        help='whether to remove saved real images')
     return parser.parse_args()
 
 
