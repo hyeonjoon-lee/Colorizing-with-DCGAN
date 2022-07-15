@@ -8,6 +8,7 @@ import torchvision.transforms as transforms
 from network_new import Generator, Discriminator, initialize_weights
 from dataloader import toRGB, LABDataset
 import argparse
+import pytorch_model_summary
 
 # # Hyperparameters
 # LR_GEN = 2e-4  # Initial learning rate for the generator
@@ -18,7 +19,7 @@ import argparse
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--normalization', type=str, default='batch', choices=['batch', 'instance', 'group'], help='type of normalization in the networks')
+    parser.add_argument('--normalization', type=str, default='batch', choices=['batch', 'instance', 'group', 'spectral'], help='type of normalization in the networks')
     parser.add_argument('--use_global', default=True, type=lambda x: (str(x).lower() == 'true'), help='whether to use global features network')
     parser.add_argument('--use_tanh', default=True, type=lambda x: (str(x).lower() == 'true'), help='whether to use tanh in the last layer of the generator')
     parser.add_argument('--lr_gen', type=float, default=2e-4, help='initial lr for generator')
@@ -40,12 +41,15 @@ def train(arg):
 
 
     # Setting up models
-    generator = Generator(channel_l=1, features_dim=64, normalization=arg.normalization, use_global=arg.use_global, use_tanh=arg.use_tanh).to(device)
+    generator = Generator(channel_l=1, features_dim=64, normalization=arg.normalization if arg.normalization != 'spectral' else 'batch', use_global=arg.use_global, use_tanh=arg.use_tanh).to(device)
     discriminator = Discriminator(channels_lab=3, features_dim=64, normalization=arg.normalization).to(device)
 
     # Initializing weights
     generator.apply(initialize_weights)
     discriminator.apply(initialize_weights)
+
+    print(pytorch_model_summary.summary(generator, torch.zeros(1, 1, 32, 32).to(device), show_input=True, show_hierarchical=True, show_parent_layers=True))
+    print(pytorch_model_summary.summary(discriminator, torch.zeros(1, 3, 32, 32).to(device), show_input=True, show_hierarchical=True, show_parent_layers=True))
 
     # Optimizers & Scheduler
     opt_gen = optim.Adam(generator.parameters(), lr=arg.lr_gen, betas=(0.5, 0.999))
