@@ -2,6 +2,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 from dataloader import *
 import pytorch_model_summary
+from spectral_norm import SpectralNorm
 
 """
 @inproceedings{nazeri2018image,
@@ -18,25 +19,34 @@ class ConvLayer(nn.Module):
                  norm=None, upscale=None, dropout=0):
         super().__init__()
         self.conv = nn.Conv2d(in_channel, out_channel, kernel_size=kernel, stride=stride, padding=padding)
-        self.norm = {
-            'batch': nn.BatchNorm2d(out_channel),
-            'instance': nn.InstanceNorm2d(out_channel),
-            'group': nn.GroupNorm(int(out_channel / 4), out_channel) if not out_channel % 4 else nn.GroupNorm(1,
-                                                                                                              out_channel)
-        }[norm] if norm is not None else norm
+        if norm in ['batch', 'instance', 'group']:
+            self.norm = {
+                'batch': nn.BatchNorm2d(out_channel),
+                'instance': nn.InstanceNorm2d(out_channel),
+                'group': nn.GroupNorm(out_channel / 2, out_channel) if not out_channel % 2 else nn.GroupNorm(1,
+                                                                                                             out_channel)
+            }[norm]
+        elif norm == 'spectral':
+            self.norm = SpectralNorm(self.conv)
+        else:
+            self.norm = None
         self.activation = activation_fn
         self.upscale = upscale
         self.dropout = nn.Dropout(dropout) if dropout > 0 else None
+        self.normtype = norm
 
     def forward(self, x):
         if self.upscale is not None:
             x = F.interpolate(x, scale_factor=self.upscale, mode='bilinear', align_corners=False)
-        x = self.conv(x)
-        if self.norm is not None:
-            try:
-                x = self.norm(x)
-            except:
-                pass
+        if self.normtype == 'spectral':
+            x = self.norm(x)
+        else:
+            x = self.conv(x)
+            if self.norm is not None:
+                try:
+                    x = self.norm(x)
+                except:
+                    pass
         x = self.activation(x) if self.activation is not None else x
         x = self.dropout(x) if self.dropout is not None else x
         return x
@@ -149,7 +159,10 @@ class Generator(nn.Module):
 def initialize_weights(m):
     classname = m.__class__.__name__
     if classname.find('Conv2d') != -1:
-        nn.init.normal_(m.weight.data, 0.0, 0.02)
+        try:
+            nn.init.normal_(m.weight.data, 0.0, 0.02)
+        except AttributeError:
+            pass
     elif classname.find('BatchNorm2d') != -1 or classname.find('GroupNorm') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0.0)
@@ -182,14 +195,17 @@ if __name__ == '__main__':
     test_loader = DataLoader(LABDataset(test_dataset), batch_size=32, shuffle=False)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    generator = Generator(channel_l=1, features_dim=64, normalization='batch', use_global=USE_GLOBAL, use_tanh=True).to(device)
+    generator = Generator(channel_l=1, features_dim=64, normalization='batch', use_global=USE_GLOBAL, use_tanh=True).to(
+        device)
     discriminator = Discriminator(channels_lab=3, features_dim=64, normalization='batch').to(device)
 
     initialize_weights(generator)
     initialize_weights(discriminator)
 
-    print(pytorch_model_summary.summary(generator, torch.zeros(1, 1, 32, 32).to(device), show_input=True, show_hierarchical=True, show_parent_layers=True))
-    print(pytorch_model_summary.summary(discriminator, torch.zeros(1, 3, 32, 32).to(device), show_input=True, show_hierarchical=True, show_parent_layers=True))
+    print(pytorch_model_summary.summary(generator, torch.zeros(1, 1, 32, 32).to(device), show_input=True,
+                                        show_hierarchical=True, show_parent_layers=True))
+    print(pytorch_model_summary.summary(discriminator, torch.zeros(1, 3, 32, 32).to(device), show_input=True,
+                                        show_hierarchical=True, show_parent_layers=True))
 
     # run through the dataset and display the first image of every batch
     for idx, sample in enumerate(test_loader):
