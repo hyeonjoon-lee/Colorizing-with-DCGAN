@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from network_new import Generator
+from networks import Generator
 import matplotlib.pyplot as plt
 import pytorch_model_summary
 img = torch.zeros(1, 1, 32, 32)

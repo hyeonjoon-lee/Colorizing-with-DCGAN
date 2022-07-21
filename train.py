@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torchvision
 import torchvision.transforms as transforms
-from network_new import Generator, Discriminator, initialize_weights
+from networks import Generator, Discriminator, initialize_weights
 from dataloader import toRGB, LABDataset
 import argparse
 import pytorch_model_summary
@@ -14,7 +14,7 @@ import pytorch_model_summary
 # LR_GEN = 2e-4  # Initial learning rate for the generator
 # LR_DISC = 1e-5  # Initial learning rate for the discriminator
 # BATCH_SIZE = 32  # Batch size
-# EPOCH = 50
+# EPOCH = 100
 
 
 def get_args():

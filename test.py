@@ -1,11 +1,9 @@
-import os.path, sys
-
-import matplotlib.pyplot as plt
+import os.path
 import torch
 from torch.utils.data import DataLoader
 import torchvision
 import torchvision.transforms as transforms
-from network_new import Generator
+from networks import Generator
 from dataloader import toRGB, LABDataset
 import argparse
 from PIL import Image
@@ -27,11 +25,10 @@ def test(arg):
     path = '{}_global'.format(arg.normalization) if arg.use_global else arg.normalization
     print(path)
 
-    loaded_path = os.path.join('./checkpoints', path, 'generator_epoch50.pth')
+    loaded_path = os.path.join('./checkpoints', path, 'generator_epoch100.pth')
     loaded_checkpoint = torch.load(loaded_path)
 
-    generator = Generator(channel_l=1, features_dim=64, normalization=arg.normalization, use_global=arg.use_global).to(
-        device)
+    generator = Generator(channel_l=1, features_dim=64, normalization=arg.normalization if arg.normalization != 'spectral' else 'batch', use_global=arg.use_global).to(device)
     generator.load_state_dict(loaded_checkpoint["model_state"])
 
     img_path = {
@@ -89,7 +86,7 @@ def test(arg):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--normalization', type=str, default='batch', choices=['batch', 'instance', 'group'],
+    parser.add_argument('--normalization', type=str, default='batch', choices=['batch', 'instance', 'group', 'spectral'],
                         help='type of normalization in the networks')
     parser.add_argument('--use_global', default=True, type=lambda x: (str(x).lower() == 'true'),
                         help='whether to use global features network')
